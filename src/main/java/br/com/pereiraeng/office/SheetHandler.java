@@ -40,7 +40,7 @@ public class SheetHandler extends DefaultHandler {
 
 		try {
 			XSSFReader reader = new XSSFReader(OPCPackage.open(file));
-			this.sst = reader.getSharedStringsTable();
+			this.sst = (SharedStringsTable) reader.getSharedStringsTable();
 
 			XMLReader parser = SAXHelper.newXMLReader();
 			parser.setContentHandler(this);
@@ -95,7 +95,7 @@ public class SheetHandler extends DefaultHandler {
 		// Do now, as characters() may be called more than once
 		if (nextIsString) {
 			int idx = Integer.parseInt(lastContents.toString());
-			lastContents = new StringBuilder(sst.getEntryAt(idx).getT().toString());
+//	TODO		lastContents = new StringBuilder(sst.getEntryAt(idx).getT().toString());
 			nextIsString = false;
 		}
 

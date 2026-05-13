@@ -2,11 +2,8 @@ package br.com.pereiraeng.office;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 
 import org.apache.poi.xssf.usermodel.XSSFRow;
@@ -14,23 +11,22 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
-class Html2XlsxTest {
+import br.com.pereiraeng.io.IOutils;
+
+public class Html2XlsxTest {
 
 	@Test
 	void testHtml2Xlsx() {
-		String filename = "src/test/resources/SDRO_DIARIO_2023_06_29_HTML_09_ProducaoTermicaUsina.html";
 
-		StringBuilder html = new StringBuilder();
-		try {
-			String str;
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
-			while ((str = br.readLine()) != null)
-				html.append(str);
-			br.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		String filename = "SDRO_DIARIO_2023_06_29_HTML_09_ProducaoTermicaUsina.html";
+
+		String html = IOutils.readFileFromResources(filename);
+
 		File newFile = new File("html.xlsx");
+
+		if (newFile.exists())
+			newFile.delete();
+
 		Office.exportExcel(newFile, html.toString(), 3);
 
 		XSSFWorkbook workbook = Office.getWB(newFile);

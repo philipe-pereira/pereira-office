@@ -8,37 +8,29 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import javax.swing.AbstractListModel;
-import javax.swing.JTable;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.tree.DefaultMutableTreeNode;
-
 import org.apache.poi.EmptyFileException;
+import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory;
-import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.CellValue;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -58,12 +50,13 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STPageOrientation;
 
-import br.com.pereiraeng.math.timeseries.Reg;
-import br.com.pereiraeng.math.timeseries.RegP;
 import br.com.pereiraeng.core.StringUtils;
 import br.com.pereiraeng.core.TimeUtils;
 import br.com.pereiraeng.core.collections.ArrayUtils;
 import br.com.pereiraeng.html.HTML;
+import br.com.pereiraeng.math.timeseries.Reg;
+import br.com.pereiraeng.math.timeseries.RegP;
+import br.com.pereiraeng.math.timeseries.SrT;
 
 public class Office {
 
@@ -95,25 +88,6 @@ public class Office {
 	 * Número máximo de caracteres do nome de uma aba do MS-Excel
 	 */
 	public static final int MAX_SHEET_LENGTH = 31;
-
-	// ----------------------------- SEM O XSSF -----------------------------
-
-	/**
-	 * Função que cria um <code>String</code> no formato a ser inserido num arquivo
-	 * do Excel a partir de uma conjunto de células de uma tabela
-	 * 
-	 * @param cell células da tabela
-	 * @return <code>String</code> formatado
-	 */
-	public static String gerarExcel(String[][] cell) {
-		String s = "";
-		for (int i = 0; i < cell.length; i++) {
-			for (int j = 0; j < cell[i].length; j++)
-				s += (cell[i][j] + "\t");
-			s += "\n";
-		}
-		return s;
-	}
 
 	// ---------------------- XSSF - Arrays e matrizes ----------------------
 
@@ -173,376 +147,6 @@ public class Office {
 			FileOutputStream out = new FileOutputStream(file);
 			wb.write(out);
 			out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	// ---------------------- XSSF - TableModel ----------------------
-
-	/**
-	 * Função que transforma uma tabela gráfica {@link JTable} em uma planilha do
-	 * Excel
-	 * 
-	 * @param file       arquivo a ser criado com a planilha Excel
-	 * @param tableModel modelo de tabela contendo o conteúdo e o cabeçalho das
-	 *                   colunas
-	 */
-	public static void export(File file, AbstractTableModel tableModel) {
-		export(file, "001", tableModel);
-	}
-
-	public static void export(File file, String sheetName, AbstractTableModel tableModel) {
-		export(file, sheetName, tableModel, null);
-	}
-
-	/**
-	 * Função que transforma uma tabela gráfica {@link JTable} em uma planilha do
-	 * Excel
-	 * 
-	 * @param file           arquivo a ser criado com a planilha Excel
-	 * @param sheetName      nome da folha da planilha
-	 * @param tableModel     modelo de tabela contendo o conteúdo da tabela e o
-	 *                       cabeçalho das colunas
-	 * @param rowHeaderModel modelo da lista contendo o cabeçalho das linhas
-	 */
-	public static void export(File file, String sheetName, AbstractTableModel tableModel,
-			AbstractListModel<?> rowHeaderModel) {
-		export(file, new String[] { sheetName }, new AbstractTableModel[] { tableModel },
-				new AbstractListModel[] { rowHeaderModel });
-	}
-
-	/**
-	 * Função que transforma tabelas gráficas {@link JTable} em uma planilha do
-	 * Excel
-	 * 
-	 * @param file            arquivo a ser criado com a planilha Excel
-	 * @param tableModels     vetor de modelos de tabelas contendo o conteúdo e o
-	 *                        cabeçalho das colunas
-	 * @param rowHeaderModels vetor de modelos da lista contendo o cabeçalho das
-	 *                        linhas
-	 */
-	public static void export(File file, String[] sheetNames, AbstractTableModel[] tableModels,
-			AbstractListModel<?>[] rowHeaderModels) {
-		XSSFWorkbook wb = getWB(file);
-
-		for (int k = 0; k < tableModels.length; k++)
-			writeSheet(wb, sheetNames[k], tableModels[k], rowHeaderModels[k]);
-
-		try {
-			FileOutputStream out = new FileOutputStream(file);
-			wb.write(out);
-			out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private static XSSFSheet writeSheet(XSSFWorkbook wb, String sheetName, AbstractTableModel tableModel,
-			AbstractListModel<?> rowHeaderModel) {
-		// se houver o cabeçalho das linhas, deslocar uma coluna para ele
-		int rh = rowHeaderModel != null ? 1 : 0;
-
-		XSSFSheet sh = wb.createSheet(sheetName);
-
-		// cabeçalho das colunas
-		XSSFRow row = sh.createRow(0);
-		for (int i = 0; i < tableModel.getColumnCount(); i++) {
-			XSSFCell cell = row.createCell(i + rh);
-			String columnName = tableModel.getColumnName(i);
-			cell.setCellValue(columnName);
-		}
-
-		for (int j = 0; j < tableModel.getRowCount(); j++) {
-			row = sh.createRow(j + 1);
-
-			// cabeçalho das linhas
-			if (rowHeaderModel != null)
-				setCell(row.createCell(0), rowHeaderModel.getElementAt(j));
-
-			// conteúdo
-			for (int i = 0; i < tableModel.getColumnCount(); i++)
-				setCell(row.createCell(i + rh), tableModel.getValueAt(j, i));
-		}
-
-		return sh;
-	}
-
-	// =========================== TREE-TABLE ===========================
-
-	/**
-	 * Função que exporta uma tabela-árvore para uma planilha Excel (a arborescência
-	 * será convertida em uma série de linhas, onde os nós superiores mesclam seus
-	 * filhos)
-	 * 
-	 * @param file       arquivo a ser criado com a planilha do MS-Excel
-	 * @param sheetName  nome da folha da planilha
-	 * @param attm       modelo de tabela-árvore contendo o conteúdo da tabela e o
-	 *                   cabeçalho das colunas
-	 * @param treeLevels nome das colunas da árvore (o tamanho deste vetor deve ser
-	 *                   igual à profundidade da árvore)
-	 */
-	public static void export(File file, String sheetName, AdvancedTreeTableModel attm, String... treeLevels) {
-		String[] valueColumns = new String[attm.getColumnCount() - 1];
-		for (int j = 0; j < valueColumns.length; j++)
-			valueColumns[j] = attm.getColumnName(j + 1);
-		export(file, sheetName, (DefaultMutableTreeNode) attm.getRoot(), attm.getTableData(), valueColumns, treeLevels);
-	}
-
-	public static void main(String[] args) {
-		DefaultMutableTreeNode root = new DefaultMutableTreeNode("1");
-		DefaultMutableTreeNode node2 = new DefaultMutableTreeNode("2");
-		root.add(node2);
-		DefaultMutableTreeNode node3 = new DefaultMutableTreeNode("3");
-		node2.add(node3);
-		DefaultMutableTreeNode node4 = new DefaultMutableTreeNode("4");
-		node3.add(node4);
-		DefaultMutableTreeNode node5 = new DefaultMutableTreeNode("5");
-		node2.add(node5);
-
-		Map<Object, Object[]> table = new HashMap<>();
-		table.put("1", new Object[] { "Um", 1, "Un" });
-		table.put("2", new Object[] { "Dois", 2, "Deux" });
-		table.put("3", new Object[] { "Três", 3, "Trois" });
-		table.put("4", new Object[] { "Quatro", 4, "Quatre" });
-		table.put("5", new Object[] { "Cinco", 5, "Cinq" });
-
-		export(new File("test.xlsx"), "test", root, table, null);
-	}
-
-	/**
-	 * Função que exporta uma tabela-árvore para uma planilha Excel (a arborescência
-	 * será convertida em uma série de linhas, onde os nós superiores mesclam seus
-	 * filhos)
-	 * 
-	 * @param file         arquivo a ser criado com a planilha Excel do MS-Excel
-	 * @param sheetName    nome da folha da planilha
-	 * @param treeLevels   nome das colunas da árvore (o tamanho deste vetor deve
-	 *                     ser igual à profundidade da árvore)
-	 * @param root         raiz da árvore
-	 * @param data         tabela com os dados de cada nó
-	 * @param valueColumns demais colunas, respectivas aos valores de cada nó (por
-	 *                     ser <code>null</code>, e neste caso não haverá cabeçalho
-	 *                     para os valores)
-	 */
-	public static void export(File file, String sheetName, DefaultMutableTreeNode root, Map<Object, Object[]> data,
-			String[] valueColumns, String... treeLevels) {
-		// dados
-
-		int depth = root.getDepth();
-		if (treeLevels.length == 0) {
-			treeLevels = new String[depth];
-			for (int i = 0; i < treeLevels.length; i++)
-				treeLevels[i] = String.format("Nível %02d", i);
-		}
-
-		// workbook e sheet
-		XSSFWorkbook wb = Office.getWB(file);
-
-		XSSFSheet sh = wb.createSheet(sheetName);
-		sh.createFreezePane(depth, 1);
-
-		// cabeçalho da coluna da árvore
-		XSSFRow row = sh.createRow(0);
-
-		XSSFCell cell = null;
-		for (int k = 0; k < treeLevels.length; k++) {
-			cell = row.createCell(k);
-			cell.setCellValue(treeLevels[k]);
-		}
-
-		if (valueColumns != null)
-			for (int j = 0; j < valueColumns.length; j++)
-				row.createCell(treeLevels.length + j).setCellValue(valueColumns[j] == null);
-
-		// conteúdo
-		DefaultMutableTreeNode[] nodes = new DefaultMutableTreeNode[depth];
-		int[] rst = new int[depth];
-		int[] starts = new int[depth];
-		writeLine(sh, root, data, 1, nodes, rst, starts);
-
-		// escrever arquivo
-		try {
-			FileOutputStream out = new FileOutputStream(file);
-			wb.write(out);
-			out.close();
-		} catch (IOException exc) {
-			exc.printStackTrace();
-		}
-	}
-
-	private static int writeLine(XSSFSheet sh, DefaultMutableTreeNode node, Map<Object, Object[]> data, int rowIndex,
-			DefaultMutableTreeNode[] nodes, int[] rst, int[] starts) {
-		if (node.isLeaf()) {
-			// se for uma folha, contém valores...
-
-			int level = node.getLevel();
-			Object obj = node.getUserObject();
-
-			Object[] values = data.get(obj);
-
-			XSSFRow row = sh.createRow(rowIndex);
-
-			// folha
-			XSSFCell cell = row.createCell(level - 1);
-			Office.setCell(cell, obj);
-
-			// medições
-			for (int m = 0; m < values.length; m++) {
-				cell = row.createCell(nodes.length + m);
-				Office.setCell(cell, values[m]);
-			}
-
-			// valor da célula mesclada
-			for (int i = rst.length - 1; i > 0; i--) {
-				if (rst[i] == 0) { // quando a coluna atual começa...
-					starts[i - 1] = rowIndex;
-//					row.createCell(i - 1).setCellValue(nodes[i - 1].toString());
-				} else
-					break;
-			}
-
-			// mesclagem
-//			for (int i = rst.length - 1; i > 0; i--) {
-//				if (rst[i] == nodes[i - 1].getChildCount() - 1) {
-//					// quando a coluna atual termina...
-//					if (starts[i - 1] != rowIndex)
-//						sh.addMergedRegion(new CellRangeAddress(starts[i - 1], rowIndex, i - 1, i - 1));
-//				} else
-//					break;
-//			}
-			rowIndex++;
-			return rowIndex;
-		} else {
-			// se o nó possuir filhos...
-			for (int l = 0; l < node.getChildCount(); l++) {
-				// ler recursivamente os filhos
-				DefaultMutableTreeNode child = (DefaultMutableTreeNode) node.getChildAt(l);
-				int level = child.getLevel() - 1;
-				nodes[level] = child;
-				rst[level] = l;
-				rowIndex = writeLine(sh, child, data, rowIndex, nodes, rst, starts);
-			}
-			return rowIndex;
-		}
-	}
-
-	// =========================== SQL <-> EXCEL ===========================
-
-	/**
-	 * Função que exporta para o Excel os resultados de uma busca SQL
-	 * 
-	 * @param file arquivo de destino
-	 * @param rs   resultado da busca
-	 */
-	public static void export(File file, ResultSet rs) {
-		XSSFWorkbook wb = getWB(file);
-
-		XSSFSheet sh = wb.createSheet();
-
-		try {
-			int col = rs.getMetaData().getColumnCount();
-
-			// cabeçalho das colunas
-			XSSFRow row = sh.createRow(0);
-			for (int i = 0; i < col; i++)
-				row.createCell(i).setCellValue(rs.getMetaData().getColumnName(i + 1));
-
-			// conteúdo
-			int r = 1;
-			while (rs.next()) {
-				row = sh.createRow(r);
-				for (int i = 0; i < col; i++)
-					setCell(row.createCell(i), rs.getObject(i + 1));
-				r++;
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-
-		try {
-			FileOutputStream out = new FileOutputStream(file);
-			wb.write(out);
-			out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Função que carrega o conteúdo da planilha Excel numa base de dados SQL. O
-	 * nome da tabela SQL será o nome do arquivo
-	 * 
-	 * @param file arquivo da planilha Excel
-	 * @param sql  objeto conector da base de dados
-	 */
-	public static void transferSQL(File file, SQLadapter sql) {
-		XSSFWorkbook wb = getWB(file);
-
-		XSSFSheet sheet = wb.getSheetAt(0);
-
-		// header
-		XSSFRow row = sheet.getRow(0);
-		int cn = row.getLastCellNum();
-		String[] cols = new String[cn];
-		for (int i = 0; i < cols.length; i++)
-			cols[i] = row.getCell(i).getStringCellValue().replaceAll("\\s+", "_");
-
-		// tipos
-		row = sheet.getRow(1);
-		CellType[] types = new CellType[cn];
-		for (int i = 0; i < cols.length; i++)
-			types[i] = row.getCell(i).getCellType();
-
-		// criar tabela
-		String table = file.getName().replaceAll("\\s+", "_");
-		StringBuilder s = new StringBuilder(String.format("CREATE TABLE IF NOT EXISTS `%s` (", table));
-		for (int i = 0; i < cols.length; i++)
-			s.append(String.format("`%s` %s, ", cols[i], types[i] == CellType.NUMERIC ? "float" : "text"));
-		s.setLength(s.length() - 2);
-		s.append(") ENGINE=InnoDB DEFAULT CHARSET=utf8;");
-		sql.update(s.toString());
-
-		// cells
-		int rn = sheet.getLastRowNum();
-		s = new StringBuilder(
-				String.format("INSERT INTO `%s`(`%s`) VALUES ", table, StringUtils.addSeparator(cols, "`, `")));
-		for (int r = 1; r <= rn; r++) {
-			row = sheet.getRow(r);
-			if (row != null) {
-				StringBuilder ss = new StringBuilder();
-				boolean nnr = false;
-				for (int i = 0; i < cols.length; i++) {
-					XSSFCell cell = row.getCell(i);
-					if (cell != null) {
-						CellType type = cell.getCellType();
-						boolean be = type != CellType.BLANK && type != CellType.ERROR;
-						nnr |= be;
-						if (be) {
-							if (types[i] == CellType.NUMERIC)
-								ss.append(cell.getNumericCellValue());
-							else {
-								ss.append("'");
-								ss.append(cell.getStringCellValue());
-								ss.append("'");
-							}
-						} else
-							ss.append("NULL");
-					} else
-						ss.append("NULL");
-					ss.append(",");
-				}
-				if (nnr) { // se a linha é não-nula
-					s.append("(");
-					s.append(ss.substring(0, ss.length() - 1));
-					s.append("), ");
-				}
-			}
-		}
-		sql.update(s.substring(0, s.length() - 2));
-
-		try {
-			wb.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -769,6 +373,40 @@ public class Office {
 		return ok;
 	}
 
+	public static void export(File xlsx, String sheetName, SrT<Double> series) {
+		XSSFWorkbook wb = new XSSFWorkbook();
+
+		XSSFSheet sheet = wb.createSheet(sheetName);
+
+		String[] labels = series.getLabels();
+
+		XSSFRow row = sheet.createRow(0);
+		for (int i = 0; i < labels.length; i++)
+			row.createCell(i + 1).setCellValue(labels[i]);
+
+		int r = 1;
+		for (Entry<Double, float[]> e : series.entrySet()) {
+			row = sheet.createRow(r);
+
+			row.createCell(0).setCellValue(e.getKey());
+			float[] values = e.getValue();
+			for (int i = 0; i < values.length; i++)
+				row.createCell(i + 1).setCellValue(values[i]);
+
+			r++;
+		}
+
+		try {
+			FileOutputStream fos = new FileOutputStream(xlsx);
+			wb.write(fos);
+			wb.close();
+			fos.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
 	// ============================= XLSX -> REG =============================
 
 	public static RegP importExcel(File file) {
@@ -845,57 +483,6 @@ public class Office {
 			return false;
 		}
 		return true;
-	}
-
-	// ============================= CHART -> XLSX =============================
-
-	public static void export(File file, Chart<?> chart) {
-		XSSFWorkbook wb = new XSSFWorkbook();
-
-		// nomes das etiquetas
-		List<?> labels = chart.getKeyArray();
-
-		for (int l = 0; l < labels.size(); l++) {
-			XSSFSheet sh = wb.createSheet(labels.get(l).toString());
-
-			XSSFRow row = sh.createRow(0);
-			row.createCell(0).setCellValue("X");
-			row.createCell(1).setCellValue("Y");
-
-			Object obj = (Object) labels.get(l);
-			Plotable plotable = chart.get(obj);
-			if (plotable instanceof Cloud) {
-				Cloud c = (Cloud) plotable;
-				double[][] xy = c.getCoordinates();
-
-				for (int j = 0; j < xy[0].length; j++) {
-					row = sh.createRow(j + 1);
-					row.createCell(0).setCellValue(xy[0][j]);
-					row.createCell(1).setCellValue(xy[1][j]);
-				}
-			} else if (plotable instanceof CurveFamily) {
-				CurveFamily cf = (CurveFamily) plotable;
-				for (int k = 0; k < cf.size(); k++) {
-					cf.setIndex(k);
-					double[][] xy = cf.getCoordinates();
-
-					for (int j = 0; j < xy[0].length; j++) {
-						row = sh.createRow(j + 1);
-						row.createCell(2 * k).setCellValue(xy[0][j]);
-						row.createCell(2 * k + 1).setCellValue(xy[1][j]);
-					}
-				}
-			}
-		}
-
-		try {
-			FileOutputStream out = new FileOutputStream(file);
-			wb.write(out);
-			out.close();
-			wb.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	// =========================== HTML table -> XLSX ===========================
@@ -1009,6 +596,7 @@ public class Office {
 
 	/**
 	 * Função que abre uma planilha do MS-Excel (2003-...) no modo somente leitura
+	 * ou cria uma novo Workbook, em modo escrita, caso o arquivo não exista
 	 * 
 	 * @param filePath sequência de caracteres indicando o caminho até a planilha
 	 * @return objeto da planilha
@@ -1019,6 +607,7 @@ public class Office {
 
 	/**
 	 * Função que abre uma planilha do MS-Excel (2003-...) no modo somente leitura
+	 * ou cria uma novo Workbook, em modo escrita, caso o arquivo não exista
 	 * 
 	 * @param file arquivo da planilha
 	 * @return objeto da planilha
@@ -1042,16 +631,20 @@ public class Office {
 					return new XSSFWorkbook(new FileInputStream(file));
 				} catch (IOException e2) {
 					e2.printStackTrace();
-					return null;
 				}
-			} else { // mode somente leitura TODO testar isso!
+			} else { // mode somente leitura
 				try {
-					return XSSFWorkbookFactory.createWorkbook(OPCPackage.create(file));
-				} catch (EmptyFileException | IOException e1) {
-					e1.printStackTrace();
-					return null;
+					Workbook workbook = WorkbookFactory.create(file, null, true);
+					if (workbook instanceof XSSFWorkbook) {
+						return (XSSFWorkbook) workbook;
+					} else {
+						workbook.close();
+					}
+				} catch (EncryptedDocumentException | IOException e) {
+					e.printStackTrace();
 				}
 			}
+			return null;
 		} else // se o arquivo não existe, criar
 			return new XSSFWorkbook();
 	}
@@ -1142,61 +735,6 @@ public class Office {
 		Calendar out = Calendar.getInstance();
 		out.setTimeInMillis((long) (numeric * 86400000L) - 2209150800000L);
 		return out;
-	}
-
-	/**
-	 * Função que exporta para o Excel o conteúdo de toda uma tabela da base de
-	 * dados
-	 * 
-	 * @param folder diretório onde será criado a planilha do Excel
-	 * @param table  nome da tabela do banco de dados a ser exportada
-	 */
-	public void sql2xlsx(SQLadapter sql, String folder, String table) {
-		ResultSet rs = null;
-
-		XSSFWorkbook wb = new XSSFWorkbook();
-
-		XSSFSheet sh = wb.createSheet("DB");
-		XSSFRow row = sh.createRow(0);
-
-		try {
-			String query = "SELECT * FROM " + table;
-
-			rs = sql.query(query);
-
-			// cabeçalho
-			ResultSetMetaData rsmd = rs.getMetaData();
-			int columns = rsmd.getColumnCount();
-			for (int j = 1; j <= columns; j++) {
-				XSSFCell cell = row.createCell(j - 1);
-				cell.setCellValue(rsmd.getColumnName(j));
-			}
-
-			// para cada entrada da BD
-			int y = 0;
-
-			while (rs.next()) {
-				y++;
-				row = sh.createRow(y);
-
-				for (int j = 1; j <= columns; j++) {
-					XSSFCell cell = row.createCell(j - 1);
-					cell.setCellValue(rs.getString(j));
-				}
-			}
-
-			rs.getStatement().close();
-			rs.close();
-
-			// gerar arquivo do Excel
-
-			File f = new File(folder + "/" + table + ".xlsx");
-			FileOutputStream out = new FileOutputStream(f);
-			wb.write(out);
-			out.close();
-		} catch (SQLException | IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	// ==================================================================
